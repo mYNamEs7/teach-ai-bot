@@ -1,4 +1,5 @@
 import asyncio
+import os
 import logging
 import uvicorn
 from telegram.ext import (
@@ -116,10 +117,11 @@ async def main() -> None:
             await tg_app.shutdown()
 
     async def run_admin():
+        port = int(os.environ.get("PORT", 8000))
         config = uvicorn.Config(
             admin_app,
             host="0.0.0.0",
-            port=8000,
+            port=port,
             log_level="info",
         )
         server = uvicorn.Server(config)
