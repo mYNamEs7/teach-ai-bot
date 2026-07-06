@@ -128,7 +128,6 @@ def create_admin_app() -> FastAPI:
         engine=engine,
         authentication_backend=auth_backend,
         title="Teach AI Bot Admin",
-        locale="ru_RU",
     )
 
     admin.add_model_view(UserAdmin)
