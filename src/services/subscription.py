@@ -41,7 +41,7 @@ async def activate_subscription(
     return sub
 
 
-async def expire_old_subscriptions(session: AsyncSession) -> int:
+async def expire_old_subscriptions() -> int:
     from sqlalchemy import select, update
     from src.db.models import Subscription
     from src.db.session import async_session_factory
