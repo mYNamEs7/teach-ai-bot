@@ -3,7 +3,7 @@ import asyncio
 import logging
 from typing import List, Optional
 import httpx
-from src.redis.client import get_redis
+from src.redis.client import ensure_redis
 
 log = logging.getLogger(__name__)
 
@@ -44,7 +44,10 @@ async def _probe_free_models() -> List[str]:
 
 
 async def get_available_models() -> List[str]:
-    r = get_redis()
+    try:
+        r = await ensure_redis()
+    except RuntimeError:
+        return CUSTOM_FREE_MODELS or ["openrouter/free"]
     cached = await r.get(FALLBACK_CACHE_KEY)
     models = []
     if cached:
@@ -59,21 +62,27 @@ async def get_available_models() -> List[str]:
 
 async def update_available_models() -> List[str]:
     async with _fallback_lock:
-        r = get_redis()
-        existing_raw = await r.get(FALLBACK_CACHE_KEY)
-        if existing_raw:
-            try:
-                existing = json.loads(existing_raw)
-            except (json.JSONDecodeError, TypeError):
-                existing = []
-        else:
-            existing = []
+        existing = []
+        try:
+            r = await ensure_redis()
+            existing_raw = await r.get(FALLBACK_CACHE_KEY)
+            if existing_raw:
+                try:
+                    existing = json.loads(existing_raw)
+                except (json.JSONDecodeError, TypeError):
+                    existing = []
+        except RuntimeError:
+            pass
 
         fresh = await _probe_free_models()
         merged = list(set(existing) | set(fresh) | set(CUSTOM_FREE_MODELS))
         if not merged:
             merged = ["openrouter/free"]
-        await r.setex(FALLBACK_CACHE_KEY, FALLBACK_CACHE_TTL, json.dumps(merged))
+        try:
+            r = await ensure_redis()
+            await r.setex(FALLBACK_CACHE_KEY, FALLBACK_CACHE_TTL, json.dumps(merged))
+        except RuntimeError:
+            pass
         log.info("Updated free models: %d available", len(merged))
         return merged
 
