@@ -123,6 +123,8 @@ async def main() -> None:
             host="0.0.0.0",
             port=port,
             log_level="info",
+            proxy_headers=True,
+            forwarded_allow_ips="*",
         )
         server = uvicorn.Server(config)
         await server.serve()
