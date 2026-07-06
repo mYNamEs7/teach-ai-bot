@@ -16,6 +16,7 @@ from src.db.session import async_session_factory
 from src.config import settings
 from src.services.notification import send_broadcast
 from src.services.subscription import check_subscription
+from src.admin.translations import TRANSLATIONS
 
 SECRET_KEY = os.urandom(24).hex()
 
@@ -123,12 +124,17 @@ def create_admin_app() -> FastAPI:
     async def admin_redirect():
         return RedirectResponse(url="/admin/user/list")
 
+    templates_path = os.path.join(os.path.dirname(__file__), "templates")
     admin = Admin(
         app=app,
         engine=engine,
         authentication_backend=auth_backend,
         title="Teach AI Bot Admin",
+        templates_dir=templates_path,
     )
+
+    admin.templates.env.globals["_t_ru"] = TRANSLATIONS["ru"]
+    admin.templates.env.globals["_t_en"] = TRANSLATIONS["en"]
 
     admin.add_model_view(UserAdmin)
     admin.add_model_view(SubscriptionAdmin)

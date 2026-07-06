@@ -1,0 +1,39 @@
+{% extends "sqladmin_original/login.html" %}
+{% block body %}
+{% set lang = request.cookies.get("lang", "ru") %}
+{% set _t = _t_ru if lang == "ru" else _t_en %}
+<div class="d-flex align-items-center justify-content-center vh-100">
+  <form class="col-lg-4 col-md-6 card card-md" action="{{ url_for('admin:login') }}" method="POST" autocomplete="off">
+    <div class="card-body">
+      <div class="text-end mb-2">
+        <select onchange="document.cookie='lang='+this.value+'; path=/; max-age=31536000';location.reload()" class="form-select form-select-sm d-inline-block w-auto">
+          <option value="ru" {% if lang == "ru" %}selected{% endif %}>{{ _t["Russian"] }}</option>
+          <option value="en" {% if lang == "en" %}selected{% endif %}>{{ _t["English"] }}</option>
+        </select>
+      </div>
+      <h2 class="card-title text-center mb-4">{{ _t["Login to"] }} {{ admin.title }}</h2>
+      <div class="mb-3">
+        <label class="form-label">{{ _t["Username"] }}</label>
+        {% if error %}
+        <input name="username" type="text" class="form-control is-invalid" placeholder="{{ _t['Enter username'] }}" autocomplete="off">
+        <div class="invalid-feedback">{{ error }}</div>
+        {% else %}
+        <input name="username" type="text" class="form-control" placeholder="{{ _t['Enter username'] }}" autocomplete="off">
+        {% endif %}
+      </div>
+      <div class="mb-2">
+        <label class="form-label">{{ _t["Password"] }}</label>
+        {% if error %}
+        <input name="password" type="password" class="form-control is-invalid" placeholder="{{ _t['Password'] }}" autocomplete="off">
+        <div class="invalid-feedback">{{ error }}</div>
+        {% else %}
+        <input name="password" type="password" class="form-control" placeholder="{{ _t['Password'] }}" autocomplete="off">
+        {% endif %}
+      </div>
+      <div class="form-footer">
+        <button type="submit" class="btn btn-primary w-100">{{ _t["Sign In"] }}</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

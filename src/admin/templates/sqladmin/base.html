@@ -1,0 +1,9 @@
+{% extends "sqladmin_original/base.html" %}
+{% block head %}
+<script>
+function setLang(lang) {
+    document.cookie = "lang=" + lang + "; path=/; max-age=31536000";
+    location.reload();
+}
+</script>
+{% endblock %}
