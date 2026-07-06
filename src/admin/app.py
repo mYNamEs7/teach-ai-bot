@@ -4,7 +4,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import select, func
 
 from src.db.models import User, Subscription, Payment, ErrorLog, AdminSetting
 from src.db.session import engine
@@ -117,11 +116,19 @@ def create_admin_app() -> FastAPI:
     app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400)
 
     auth_backend = AdminAuth(secret_key=SECRET_KEY)
+
+    # Регистрируем редирект ДО Admin, чтобы он имел приоритет
+    @app.get("/admin", include_in_schema=False)
+    @app.get("/admin/", include_in_schema=False)
+    async def admin_redirect():
+        return RedirectResponse(url="/admin/user/list")
+
     admin = Admin(
         app=app,
         engine=engine,
         authentication_backend=auth_backend,
         title="Teach AI Bot Admin",
+        locale="ru_RU",
     )
 
     admin.add_model_view(UserAdmin)
