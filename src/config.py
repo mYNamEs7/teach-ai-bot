@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     payment_provider_token: str = ""
     payment_stars_token: str = ""
     admin_ids: List[int] = []
+    admin_username: str = "admin"
     admin_password: str = "admin123"
     free_daily_limit: int = 5
     monthly_price_stars: int = 50
