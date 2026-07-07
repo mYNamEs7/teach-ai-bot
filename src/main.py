@@ -26,6 +26,9 @@ from src.bot.commands import (
     exams_command,
     free_command,
     subscribe_command,
+    god_command,
+    stop_god_command,
+    support_command,
 )
 from src.bot.handlers import callback_handler, message_handler
 from src.bot.payments import pre_checkout, successful_payment
@@ -98,6 +101,9 @@ async def main() -> None:
     tg_app.add_handler(CommandHandler("exams", exams_command))
     tg_app.add_handler(CommandHandler("free", free_command))
     tg_app.add_handler(CommandHandler("subscribe", subscribe_command))
+    tg_app.add_handler(CommandHandler("support", support_command))
+    tg_app.add_handler(CommandHandler("god", god_command))
+    tg_app.add_handler(CommandHandler("stop_god", stop_god_command))
 
     tg_app.add_handler(CallbackQueryHandler(callback_handler))
     tg_app.add_handler(PreCheckoutQueryHandler(pre_checkout))
@@ -106,9 +112,31 @@ async def main() -> None:
 
     asyncio.create_task(subscription_cleanup_task())
 
+    async def set_bot_commands():
+        from telegram import BotCommand
+        commands = [
+            BotCommand("start", "Главное меню"),
+            BotCommand("programming", "Режим программирования"),
+            BotCommand("languages", "Режим языков"),
+            BotCommand("exams", "Подготовка к экзаменам"),
+            BotCommand("free", "Свободный режим"),
+            BotCommand("mode", "Сменить режим"),
+            BotCommand("subscribe", "Управление подпиской"),
+            BotCommand("support", "Связь с поддержкой"),
+            BotCommand("god", "♾️ Безлимит (тест)"),
+            BotCommand("stop_god", "🔒 Вернуть лимиты"),
+            BotCommand("help", "Помощь"),
+        ]
+        try:
+            await tg_app.bot.set_my_commands(commands)
+            log.info("Bot commands registered")
+        except Exception as e:
+            log.warning("Failed to set bot commands: %s", e)
+
     async def run_bot():
         await tg_app.initialize()
         await tg_app.start()
+        await set_bot_commands()
         log.info("Bot started")
         await tg_app.updater.start_polling(drop_pending_updates=True)
         log.info("Polling started")

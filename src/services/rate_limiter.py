@@ -18,4 +18,6 @@ async def get_remaining_requests(user_id: int, is_premium: bool) -> int:
     if is_premium:
         return -1
     used = await get_daily_usage(user_id)
+    if used == -1:
+        return -1
     return max(0, settings.free_daily_limit - used)

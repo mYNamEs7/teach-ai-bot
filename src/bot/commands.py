@@ -27,10 +27,13 @@ HELP_TEXT = (
     "• Просто напиши вопрос — я отвечу\n"
     "• <b>/programming</b> — режим программирования\n"
     "• <b>/languages</b> — режим языков\n"
-    "• <b>/exams</b> — режим экзаменов\n"
+    "• <b>/exams</b> — подготовка к экзаменам\n"
     "• <b>/free</b> — свободный режим (по подписке)\n"
-    "• <b>/subscribe</b> — управление подпиской\n"
     "• <b>/mode</b> — сменить режим\n"
+    "• <b>/subscribe</b> — управление подпиской\n"
+    "• <b>/support</b> — связь с поддержкой\n"
+    "• <b>/god</b> — ♾️ безлимит (тест)\n"
+    "• <b>/stop_god</b> — 🔒 вернуть лимиты\n"
     "• <b>/help</b> — эта справка\n\n"
     f"📊 Бесплатно: <b>{settings.free_daily_limit} запросов</b> в день"
 )
@@ -132,6 +135,44 @@ async def exams_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def free_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _set_mode(update, context, TutorMode.free)
+
+
+async def god_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    if not user:
+        return
+    async with async_session_factory() as session:
+        from src.db.repository import toggle_god_user
+        await toggle_god_user(session, user.id, True)
+    await update.message.reply_text(
+        "👑 <b>Режим бога активирован!</b>\n\n"
+        "Все лимиты сняты. Чтобы отключить — /stop_god",
+        parse_mode="HTML",
+    )
+
+
+async def stop_god_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    if not user:
+        return
+    async with async_session_factory() as session:
+        from src.db.repository import toggle_god_user
+        await toggle_god_user(session, user.id, False)
+    await update.message.reply_text(
+        "🚫 <b>Режим бога отключён.</b>\n\n"
+        "Лимиты восстановлены.",
+        parse_mode="HTML",
+    )
+
+
+async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    contact = settings.admin_contact or "@admin_username"
+    await update.message.reply_text(
+        f"💬 <b>Связь с поддержкой</b>\n\n"
+        f"Напишите {contact}\n"
+        "Мы ответим в ближайшее время.",
+        parse_mode="HTML",
+    )
 
 
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

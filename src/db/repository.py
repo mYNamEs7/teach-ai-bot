@@ -165,6 +165,25 @@ async def set_setting(session: AsyncSession, key: str, value: dict) -> None:
     await session.commit()
 
 
+GOD_MODE_KEY = "god_mode"
+
+
+async def is_god_user(session: AsyncSession, telegram_id: int) -> bool:
+    value = await get_setting(session, GOD_MODE_KEY)
+    return value is not None and telegram_id in value.get("user_ids", [])
+
+
+async def toggle_god_user(session: AsyncSession, telegram_id: int, active: bool) -> None:
+    value = (await get_setting(session, GOD_MODE_KEY)) or {"user_ids": []}
+    user_ids = set(value.get("user_ids", []))
+    if active:
+        user_ids.add(telegram_id)
+    else:
+        user_ids.discard(telegram_id)
+    value["user_ids"] = list(user_ids)
+    await set_setting(session, GOD_MODE_KEY, value)
+
+
 async def get_all_users(session: AsyncSession) -> List[User]:
     result = await session.execute(select(User).order_by(User.created_at.desc()))
     return list(result.scalars().all())

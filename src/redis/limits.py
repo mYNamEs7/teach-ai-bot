@@ -45,4 +45,4 @@ async def get_daily_usage(user_id: int) -> int:
         return int(current) if current else 0
     except Exception as e:
         log.warning("Redis get_daily_usage failed: %s", e)
-        return 0
+        return -1

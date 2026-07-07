@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.config import settings
-from src.db.repository import get_user_by_telegram_id
+from src.db.repository import get_user_by_telegram_id, is_god_user
 from src.db.session import async_session_factory
 from src.db.models import TutorMode
 from src.services.rate_limiter import is_rate_limited
@@ -21,6 +21,9 @@ async def check_access(update: Update, context: ContextTypes.DEFAULT_TYPE) -> tu
         return True, True, None
 
     async with async_session_factory() as session:
+        if await is_god_user(session, user.id):
+            return True, True, None
+
         db_user = await get_user_by_telegram_id(session, user.id)
         if not db_user:
             return False, False, "Пользователь не найден. Напиши /start."
@@ -39,7 +42,7 @@ async def check_access(update: Update, context: ContextTypes.DEFAULT_TYPE) -> tu
         limited, count = await is_rate_limited(user.id, is_premium)
         if limited:
             return False, is_premium, (
-                f"📊 Сегодня использовано <b>{count}</b> из {5} бесплатных запросов.\n"
+                f"📊 Сегодня использовано <b>{count}</b> из {settings.free_daily_limit} бесплатных запросов.\n"
                 "Лимит на сегодня исчерпан. Завтра лимит обновится!\n"
                 "/subscribe для безлимита ♾️"
             )
