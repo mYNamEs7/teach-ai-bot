@@ -18,8 +18,11 @@ SUBSCRIPTION_DURATIONS = {
 }
 
 
-async def check_subscription(session: AsyncSession, user_id: int) -> Optional[Subscription]:
-    return await get_active_subscription(session, user_id)
+async def check_subscription(session: AsyncSession, telegram_id: int) -> Optional[Subscription]:
+    user = await get_user_by_telegram_id(session, telegram_id)
+    if not user:
+        return None
+    return await get_active_subscription(session, user.id)
 
 
 async def activate_subscription(
