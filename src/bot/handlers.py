@@ -1,23 +1,22 @@
-import asyncio
 import logging
 from typing import Optional
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, ContextTypes, CallbackContext
+from telegram import Update
+from telegram.ext import Application, ContextTypes
 
+from src.ai.client import DEFAULT_MODEL, build_messages, stream_ai_response
+from src.ai.fallback import get_next_fallback_model, update_available_models
+from src.bot.commands import WELCOME_TEXT
+from src.bot.keyboards import error_keyboard, mode_selection_keyboard, start_keyboard, subscription_keyboard
+from src.bot.middleware import check_access
+from src.bot.payments import send_card_invoice, send_stars_invoice
 from src.config import settings
-from src.db.models import TutorMode, SubscriptionType
-from src.db.repository import get_user_by_telegram_id, update_user_activity, log_error
+from src.db.models import SubscriptionType, TutorMode
+from src.db.repository import get_user_by_telegram_id, log_error, update_user_activity
 from src.db.session import async_session_factory
 from src.redis.context import add_message, get_context
-from src.redis.client import get_redis
-from src.ai.client import stream_ai_response, build_messages, DEFAULT_MODEL
-from src.ai.fallback import update_available_models, get_next_fallback_model, get_available_models
-from src.bot.keyboards import mode_selection_keyboard, subscription_keyboard, error_keyboard, start_keyboard
-from src.bot.middleware import check_access
-from src.bot.commands import WELCOME_TEXT, HELP_TEXT
-from src.bot.payments import send_card_invoice, send_stars_invoice
 from src.services.rate_limiter import get_remaining_requests
+from src.utils.formatting import format_ai_response
 
 log = logging.getLogger(__name__)
 
@@ -58,8 +57,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         await query.edit_message_text(
             "⭐ <b>Оформи подписку</b>\n\n"
-            f"• 1 месяц — 199₽ или ⭐50\n"
-            f"• 3 месяца — 499₽ или ⭐120\n\n"
+            "• 1 месяц — 199₽ или ⭐50\n"
+            "• 3 месяца — 499₽ или ⭐120\n\n"
             "Выбери способ:",
             reply_markup=subscription_keyboard(),
             parse_mode="HTML",
@@ -132,7 +131,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "support":
         await query.edit_message_text(
             "💬 <b>Связь с поддержкой</b>\n\n"
-            "Напишите @admin_username\n"
+            f"Напишите {settings.admin_contact}\n"
             "Мы ответим в ближайшее время.",
             parse_mode="HTML",
         )
@@ -166,35 +165,67 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await update.message.reply_chat_action("typing")
 
-    reply = await update.message.reply_text("🧠 Думаю...", parse_mode="HTML")
+    reply = await update.message.reply_text("✅ Запрос получен. Отправляю AI...", parse_mode="HTML")
 
     full_response = ""
+    full_reasoning = ""
     current_model = DEFAULT_MODEL
     models_tried = []
+    last_text = ""
 
     for attempt in range(3):
         try:
             if attempt > 0:
-                await reply.edit_text(f"🔄 Пробую другую модель AI... (попытка {attempt + 1})")
+                text = f"🔄 Пробую другую модель AI... (попытка {attempt + 1})"
+                if text != last_text:
+                    await reply.edit_text(text)
+                    last_text = text
 
             async for chunk in stream_ai_response(current_model, messages):
-                full_response += chunk
-                if len(full_response) % 50 < len(chunk):
-                    try:
-                        await reply.edit_text(full_response[:4096], parse_mode="HTML")
-                    except Exception:
-                        await reply.edit_text(full_response[:4096])
+                content = chunk.get("content", "")
+                reasoning = chunk.get("reasoning", "")
+
+                if reasoning:
+                    full_reasoning += reasoning
+                    if not content and not full_response:
+                        text = "🤔 Модель размышляет..."
+                        if text != last_text:
+                            await reply.edit_text(text, parse_mode="HTML")
+                            last_text = text
+
+                if content:
+                    first_content = not full_response
+                    if first_content and not full_reasoning:
+                        text = "💬 <b>Модель отвечает...</b>"
+                        if text != last_text:
+                            await reply.edit_text(text, parse_mode="HTML")
+                            last_text = text
+
+                    full_response += content
+                    if first_content or len(full_response) % 50 < len(content):
+                        display = format_ai_response(full_response)
+                        try:
+                            await reply.edit_text(display[:4096], parse_mode="HTML")
+                            last_text = display[:4096]
+                        except Exception:
+                            await reply.edit_text(full_response[:4096])
+                            last_text = full_response[:4096]
 
             if full_response:
                 remaining = -1 if is_premium else await get_remaining_requests(user.id, is_premium)
                 footer = ""
                 if not is_premium and remaining >= 0:
                     footer = f"\n\n📊 Осталось запросов сегодня: {remaining}/{settings.free_daily_limit}"
+
+                display_text = full_response
                 if footer:
-                    full_response += footer
+                    if not display_text.rstrip().endswith(footer.strip()):
+                        display_text += footer
+
+                display_text = format_ai_response(display_text)
 
                 try:
-                    await reply.edit_text(full_response[:4096], parse_mode="HTML")
+                    await reply.edit_text(display_text[:4096], parse_mode="HTML")
                 except Exception:
                     await reply.edit_text(full_response[:4096])
 

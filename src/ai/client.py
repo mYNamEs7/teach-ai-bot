@@ -1,9 +1,10 @@
 import json
-import asyncio
-from typing import AsyncGenerator, List, Dict
+from typing import AsyncGenerator, Dict, List
+
 import httpx
-from src.config import settings
+
 from src.ai.prompts import get_system_prompt
+from src.config import settings
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -21,7 +22,7 @@ async def stream_ai_response(
     model: str,
     messages: List[Dict[str, str]],
     timeout: int = 60,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[dict, None]:
     async with httpx.AsyncClient(timeout=httpx.Timeout(timeout)) as client:
         payload = {
             "model": model,
@@ -43,9 +44,13 @@ async def stream_ai_response(
                 try:
                     data = json.loads(data_str)
                     delta = data.get("choices", [{}])[0].get("delta", {})
-                    content = delta.get("content", "")
-                    if content:
-                        yield content
+                    chunk = {
+                        "content": delta.get("content", ""),
+                        "reasoning": delta.get("reasoning", delta.get("reasoning_content", "")),
+                        "model": data.get("model", ""),
+                    }
+                    if chunk["content"] or chunk["reasoning"]:
+                        yield chunk
                 except json.JSONDecodeError:
                     continue
 
@@ -57,7 +62,7 @@ async def get_ai_response(
 ) -> str:
     full = ""
     async for chunk in stream_ai_response(model, messages, timeout):
-        full += chunk
+        full += chunk.get("content", "")
     return full
 
 

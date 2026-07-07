@@ -32,6 +32,7 @@ from src.bot.payments import pre_checkout, successful_payment
 from src.admin.app import create_admin_app
 from src.services.subscription import expire_old_subscriptions
 from src.services.notification import check_expiring_subscriptions
+from src.ai.fallback import update_available_models
 
 log = logging.getLogger(__name__)
 
@@ -80,6 +81,8 @@ async def main() -> None:
 
     await init_redis()
     log.info("Redis connected")
+
+    asyncio.create_task(update_available_models())
 
     admin_app = create_admin_app()
     log.info("Admin app created")

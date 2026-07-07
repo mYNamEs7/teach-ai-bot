@@ -3,6 +3,7 @@ import asyncio
 import logging
 from typing import List, Optional
 import httpx
+from src.config import settings
 from src.redis.client import ensure_redis
 
 log = logging.getLogger(__name__)
@@ -26,8 +27,12 @@ def set_custom_free_models(models: List[str]) -> None:
 
 async def _probe_free_models() -> List[str]:
     try:
+        headers = {
+            "User-Agent": "TeachAIBot/1.0",
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
+        }
         async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(OPENROUTER_MODELS_URL)
+            resp = await client.get(OPENROUTER_MODELS_URL, headers=headers)
             if resp.status_code != 200:
                 log.warning("Failed to fetch models from OpenRouter: %d", resp.status_code)
                 return []
@@ -35,7 +40,12 @@ async def _probe_free_models() -> List[str]:
             models = []
             for model in data.get("data", []):
                 pricing = model.get("pricing", {})
-                if pricing.get("prompt") == "0":
+                prompt_price = pricing.get("prompt", 1)
+                try:
+                    is_free = float(prompt_price) == 0.0
+                except (TypeError, ValueError):
+                    is_free = str(prompt_price) in ("0", "free", "0.0")
+                if is_free:
                     models.append(model["id"])
             return models
     except Exception as e:

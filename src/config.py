@@ -1,4 +1,5 @@
 from typing import List
+
 from pydantic_settings import BaseSettings
 
 
@@ -12,6 +13,7 @@ class Settings(BaseSettings):
     admin_ids: List[int] = []
     admin_username: str = "admin"
     admin_password: str = "admin123"
+    admin_contact: str = "@admin_username"
     free_daily_limit: int = 5
     monthly_price_stars: int = 50
     monthly_price_rub: int = 199

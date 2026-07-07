@@ -42,20 +42,30 @@ async def send_card_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
     payload = f"{sub_type.value}_card"
 
-    await context.bot.send_invoice(
-        chat_id=user.id,
-        title=title,
-        description=description,
-        payload=payload,
-        provider_token=settings.payment_provider_token,
-        currency="RUB",
-        prices=prices,
-        need_name=False,
-        need_phone=False,
-        need_email=False,
-        need_shipping_address=False,
-        is_flexible=False,
-    )
+    try:
+        await context.bot.send_invoice(
+            chat_id=user.id,
+            title=title,
+            description=description,
+            payload=payload,
+            provider_token=settings.payment_provider_token,
+            currency="RUB",
+            prices=prices,
+            need_name=False,
+            need_phone=False,
+            need_email=False,
+            need_shipping_address=False,
+            is_flexible=False,
+        )
+    except Exception as e:
+        log.error("Failed to send card invoice to user %d: %s", user.id, e)
+        query = update.callback_query
+        if query:
+            await query.edit_message_text(
+                "❌ <b>Ошибка при создании счёта.</b>\n\n"
+                "Попробуй позже или выбери оплату через ⭐ Звёзды.",
+                parse_mode="HTML",
+            )
 
 
 async def send_stars_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, sub_type: SubscriptionType) -> None:
@@ -74,15 +84,25 @@ async def send_stars_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
     payload = f"{sub_type.value}_stars"
 
-    await context.bot.send_invoice(
-        chat_id=user.id,
-        title=title,
-        description=description,
-        payload=payload,
-        provider_token="",
-        currency="XTR",
-        prices=[LabeledPrice(title, amount)],
-    )
+    try:
+        await context.bot.send_invoice(
+            chat_id=user.id,
+            title=title,
+            description=description,
+            payload=payload,
+            provider_token="",
+            currency="XTR",
+            prices=[LabeledPrice(title, amount)],
+        )
+    except Exception as e:
+        log.error("Failed to send stars invoice to user %d: %s", user.id, e)
+        query = update.callback_query
+        if query:
+            await query.edit_message_text(
+                "❌ <b>Ошибка при создании счёта.</b>\n\n"
+                "Попробуй позже или выбери оплату картой.",
+                parse_mode="HTML",
+            )
 
 
 async def pre_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -97,12 +117,12 @@ async def pre_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if payload == "monthly_card":
         expected = settings.monthly_price_rub * 100
         valid = currency == "RUB" and amount == expected
-    elif payload == "three_card":
+    elif payload == "three_month_card":
         expected = settings.three_month_price_rub * 100
         valid = currency == "RUB" and amount == expected
     elif payload == "monthly_stars":
         valid = currency == "XTR" and amount == settings.monthly_price_stars
-    elif payload == "three_stars":
+    elif payload == "three_month_stars":
         valid = currency == "XTR" and amount == settings.three_month_price_stars
 
     if valid:
@@ -124,12 +144,12 @@ async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
     provider_charge_id = payment.provider_charge_id
 
     if "_card" in payload:
-        sub_type_str, method_str = payload.split("_")
+        sub_type_str, method_str = payload.rsplit("_", 1)
         payment_method = PaymentMethod.card
         currency = "RUB"
         amount = payment.total_amount / 100
     elif "_stars" in payload:
-        sub_type_str, method_str = payload.split("_")
+        sub_type_str, method_str = payload.rsplit("_", 1)
         payment_method = PaymentMethod.stars
         currency = "XTR"
         amount = payment.total_amount

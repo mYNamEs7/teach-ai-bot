@@ -2,6 +2,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from src.config import settings
 from src.db.repository import get_user_by_telegram_id
 from src.db.session import async_session_factory
 from src.db.models import TutorMode
@@ -15,6 +16,9 @@ async def check_access(update: Update, context: ContextTypes.DEFAULT_TYPE) -> tu
     user = update.effective_user
     if not user:
         return False, False, "Пользователь не идентифицирован."
+
+    if user.id in settings.admin_ids:
+        return True, True, None
 
     async with async_session_factory() as session:
         db_user = await get_user_by_telegram_id(session, user.id)
