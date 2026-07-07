@@ -1,7 +1,5 @@
 {% extends "sqladmin_original/layout.html" %}
 {% block body %}
-{% set lang = request.cookies.get("lang", "ru") %}
-{% set _t = _t_ru if lang == "ru" else _t_en %}
 <div class="wrapper">
   <aside class="navbar navbar-expand-lg navbar-vertical navbar-expand-md navbar-dark" data-bs-theme="dark">
     <div class="container-fluid">
@@ -24,18 +22,6 @@
           {{ display_menu(admin._menu, request) }}
         </div>
       </nav>
-      <div class="d-flex align-items-center gap-2">
-        <select onchange="document.cookie='lang='+this.value+'; path=/; max-age=31536000';location.reload()" class="form-select form-select-sm d-inline-block w-auto" style="font-size:12px;padding:2px 6px;">
-          <option value="ru" {% if lang == "ru" %}selected{% endif %}>RU</option>
-          <option value="en" {% if lang == "en" %}selected{% endif %}>EN</option>
-        </select>
-        {% if admin.authentication_backend %}
-        <a href="{{ request.url_for('admin:logout') }}" class="btn btn-secondary btn-icon m-2 px-2">
-          <span class="me-2">{{ _t["Logout"] }}</span>
-          <i class="fa fa-sign-out"></i>
-        </a>
-        {% endif %}
-      </div>
     </div>
   </aside>
   <div class="page-wrapper">
@@ -46,6 +32,18 @@
           <div class="col">
             <h2 class="page-title">{{ title }}</h2>
             <div class="page-pretitle">{{ subtitle }}</div>
+          </div>
+          <div class="col-auto d-flex align-items-center gap-2">
+            <select onchange="document.cookie='lang='+this.value+'; path=/; max-age=31536000';location.reload()" class="form-select form-select-sm d-inline-block w-auto" style="font-size:12px;padding:2px 8px;min-width:60px;">
+              <option value="ru" {% if _lang() == "ru" %}selected{% endif %}>RU</option>
+              <option value="en" {% if _lang() == "en" %}selected{% endif %}>EN</option>
+            </select>
+            {% if admin.authentication_backend %}
+            <a href="{{ request.url_for('admin:logout') }}" class="btn btn-secondary btn-icon px-2">
+              <span class="me-2">{{ _t("Logout") }}</span>
+              <i class="fa fa-sign-out"></i>
+            </a>
+            {% endif %}
           </div>
         </div>
         {% endblock %}

@@ -16,7 +16,8 @@ from src.db.session import async_session_factory
 from src.config import settings
 from src.services.notification import send_broadcast
 from src.services.subscription import check_subscription
-from src.admin.translations import TRANSLATIONS
+from jinja2 import pass_context
+from src.admin.translations import TRANSLATIONS, MODEL_NAMES, MODEL_NAMES_PLURAL
 
 SECRET_KEY = os.urandom(24).hex()
 
@@ -133,8 +134,38 @@ def create_admin_app() -> FastAPI:
         templates_dir=templates_path,
     )
 
-    admin.templates.env.globals["_t_ru"] = TRANSLATIONS["ru"]
-    admin.templates.env.globals["_t_en"] = TRANSLATIONS["en"]
+    @pass_context
+    def _translate(ctx, key, default=None):
+        request = ctx.get("request")
+        lang = "ru"
+        if request:
+            lang = request.cookies.get("lang", "ru")
+        translations = TRANSLATIONS.get(lang, TRANSLATIONS["ru"])
+        return translations.get(key, default if default is not None else key)
+
+    @pass_context
+    def _get_lang(ctx):
+        request = ctx.get("request")
+        return request.cookies.get("lang", "ru") if request else "ru"
+
+    @pass_context
+    def _model_name(ctx, model_class_name, default=""):
+        request = ctx.get("request")
+        lang = request.cookies.get("lang", "ru") if request else "ru"
+        return MODEL_NAMES.get(model_class_name, {}).get(lang, default)
+
+    @pass_context
+    def _model_name_plural(ctx, model_class_name, default=""):
+        request = ctx.get("request")
+        lang = request.cookies.get("lang", "ru") if request else "ru"
+        return MODEL_NAMES_PLURAL.get(model_class_name, {}).get(lang, default)
+
+    admin.templates.env.globals["_t"] = _translate
+    admin.templates.env.globals["_lang"] = _get_lang
+    admin.templates.env.globals["_model_name"] = _model_name
+    admin.templates.env.globals["_model_name_plural"] = _model_name_plural
+    admin.templates.env.globals["_model_names"] = MODEL_NAMES
+    admin.templates.env.globals["_model_names_plural"] = MODEL_NAMES_PLURAL
 
     admin.add_model_view(UserAdmin)
     admin.add_model_view(SubscriptionAdmin)
