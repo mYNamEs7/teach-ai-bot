@@ -125,13 +125,11 @@ def create_admin_app() -> FastAPI:
     async def admin_redirect():
         return RedirectResponse(url="/admin/user/list")
 
-    templates_path = os.path.join(os.path.dirname(__file__), "templates")
     admin = Admin(
         app=app,
         engine=engine,
         authentication_backend=auth_backend,
         title="Teach AI Bot Admin",
-        templates_dir=templates_path,
     )
 
     @pass_context
