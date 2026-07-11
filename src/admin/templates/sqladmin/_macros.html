@@ -92,6 +92,6 @@
 {% endif %}
 
 {% for f in form if f.widget.input_type != 'hidden' %}
-{{ render_field(f, kwargs, ajax_lookup_url=ajax_lookup_url) }}
+{{ render_field(f, kwargs={}, ajax_lookup_url=ajax_lookup_url) }}
 {% endfor %}
 {% endmacro %}
