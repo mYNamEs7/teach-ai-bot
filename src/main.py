@@ -31,6 +31,7 @@ from src.bot.commands import (
     support_command,
 )
 from src.bot.handlers import callback_handler, message_handler
+from telegram.request import HTTPXRequest
 from src.bot.payments import pre_checkout, successful_payment
 from src.admin.app import create_admin_app
 from src.services.subscription import expire_old_subscriptions
@@ -90,7 +91,15 @@ async def main() -> None:
     admin_app = create_admin_app()
     log.info("Admin app created")
 
-    tg_app = Application.builder().token(settings.bot_token).build()
+    request = HTTPXRequest(
+        http_version="1.1",
+        connection_pool_size=16,
+        read_timeout=60.0,
+        write_timeout=30.0,
+        connect_timeout=30.0,
+        pool_timeout=30.0,
+    )
+    tg_app = Application.builder().token(settings.bot_token).request(request).build()
     bot_handlers.application = tg_app
 
     tg_app.add_handler(CommandHandler("start", start_command))
